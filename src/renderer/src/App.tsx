@@ -18,7 +18,7 @@ export function App() {
       {d.video && <VideoDetails video={d.video} quality={d.quality} onQuality={d.setQuality} disabled={d.busy} />}
       <div className="destination"><div className="section-heading"><span className="step">02</span><h2>Escolha o destino</h2></div>
         <label htmlFor="directory">Pasta no computador</label><div className="input-row"><input id="directory" value={d.directory} placeholder="Selecione uma pasta para salvar" readOnly title={d.directory} /><button type="button" className="secondary-button" disabled={d.busy} onClick={() => void d.chooseDirectory()}>Escolher pasta</button></div></div>
-      <div className="download-footer"><p>MP4 · Áudio e vídeo juntos.<br /><span>Qualidade original, sem recodificação.</span></p><button type="button" className="primary-button" disabled={d.busy || !d.video || !d.directory} onClick={() => void d.start()}><span aria-hidden="true">↓</span> {d.starting ? 'Preparando…' : 'Baixar vídeo'}</button></div>
+      <div className="download-footer"><p>MP4 · Compatível com Windows.<br /><span>Vídeo H.264 e áudio AAC, sem recodificação.</span></p><button type="button" className="primary-button" disabled={d.busy || !d.video || !d.directory} onClick={() => void d.start()}><span aria-hidden="true">↓</span> {d.starting ? 'Preparando…' : 'Baixar vídeo'}</button></div>
     </section>
     {d.error && <p className="error-banner" role="alert">{d.error}</p>}
     {d.event && <DownloadProgress event={d.event} cancelling={d.cancelling} onCancel={() => void d.cancel()} />}

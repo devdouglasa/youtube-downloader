@@ -31,7 +31,7 @@ export function downloadArguments(tools: Tools, url: string, quality: number | '
     '--print', 'before_dl:APP_PHASE:downloading',
     '--print', 'post_process:APP_PHASE:processing',
     '--print', 'after_move:APP_FILE:%(filepath)j',
-    '--format', `bv*${limit}+ba/b${limit}`,
+    '--format', `bv[ext=mp4][vcodec^=avc1]${limit}+ba[ext=m4a][acodec^=mp4a]/b[ext=mp4][vcodec^=avc1][acodec^=mp4a]${limit}`,
     '--merge-output-format', 'mp4', '--remux-video', 'mp4',
     '--windows-filenames', '--trim-filenames', '160',
     '--paths', directory, '--output', '%(title)s [%(id)s].%(ext)s', '--', url]

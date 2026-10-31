@@ -31,10 +31,12 @@ it.skipIf(!process.env.LIVE_VIDEO_URL)('baixa vídeo público com ferramentas re
     expect(event.path).toMatch(/\.mp4$/i)
     expect(events.some((event) => event.status === 'downloading' && (event.percent ?? 0) > 0)).toBe(true)
     expect(events.some((event) => event.status === 'processing')).toBe(true)
-    const result = await promisify(execFile)(tools.ffprobe, ['-v', 'error', '-show_entries', 'stream=codec_type:format=format_name', '-of', 'json', event.path!], { windowsHide: true })
-    const data = JSON.parse(result.stdout) as { streams: { codec_type: string }[]; format: { format_name: string } }
+    const result = await promisify(execFile)(tools.ffprobe, ['-v', 'error', '-show_entries', 'stream=codec_type,codec_name:format=format_name', '-of', 'json', event.path!], { windowsHide: true })
+    const data = JSON.parse(result.stdout) as { streams: { codec_type: string; codec_name: string }[]; format: { format_name: string } }
     expect(data.format.format_name.split(',')).toContain('mp4')
     expect(data.streams.map((s) => s.codec_type)).toEqual(expect.arrayContaining(['video', 'audio']))
+    expect(data.streams.find((s) => s.codec_type === 'video')?.codec_name).toBe('h264')
+    expect(data.streams.find((s) => s.codec_type === 'audio')?.codec_name).toBe('aac')
     expect(await readdir(join(root, 'temp'))).toEqual([])
   } finally { await rm(root, { recursive: true, force: true, maxRetries: 5 }) }
 }, 250000)

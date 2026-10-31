@@ -8,11 +8,16 @@ import { CancelledError, runTool, type RunTool } from '../src/main/downloads/run
 import { DownloadService } from '../src/main/downloads/service'
 import { downloadArguments, type Tools } from '../src/main/downloads/tools'
 import { normalizeVideoUrl } from '../src/main/downloads/url'
+import { compatibleQualities } from '../src/main/downloads/formats'
 
 const url = 'https://www.youtube.com/watch?v=BaW_jenozKc'
 const tools: Tools = { ytdlp: 'yt-dlp.exe', ffmpeg: 'C:\\tools with spaces\\ffmpeg.exe', ffprobe: 'ffprobe.exe', deno: 'deno.exe' }
 const metadata = JSON.stringify({ title: 'Vídeo de teste', duration: 10, formats: [
-  { height: 1080, vcodec: 'avc1' }, { height: 720, vcodec: 'vp9' }, { height: 720, vcodec: 'avc1' }, { vcodec: 'none' }
+  { height: 1080, ext: 'mp4', vcodec: 'avc1.640028', acodec: 'none' },
+  { height: 2160, ext: 'mp4', vcodec: 'av01', acodec: 'none' },
+  { height: 720, ext: 'webm', vcodec: 'vp9', acodec: 'none' },
+  { height: 720, ext: 'mp4', vcodec: 'avc1.4d401f', acodec: 'mp4a.40.2' },
+  { ext: 'm4a', vcodec: 'none', acodec: 'mp4a.40.2' }
 ] })
 
 describe('URLs', () => {
@@ -32,7 +37,7 @@ describe('URLs', () => {
 describe('argumentos e protocolo de progresso', () => {
   it('mantém caminhos como argumentos separados e limita a resolução sem transcodificar', () => {
     const args = downloadArguments(tools, url, 720, 'C:\\Vídeos com acentos\\temporário')
-    expect(args).toContain('bv*[height<=720]+ba/b[height<=720]')
+    expect(args).toContain('bv[ext=mp4][vcodec^=avc1][height<=720]+ba[ext=m4a][acodec^=mp4a]/b[ext=mp4][vcodec^=avc1][acodec^=mp4a][height<=720]')
     expect(args).toContain('C:\\Vídeos com acentos\\temporário')
     expect(args).toContain(tools.ffmpeg)
     expect(args).toContain('--ignore-config')
@@ -53,6 +58,28 @@ describe('argumentos e protocolo de progresso', () => {
     reader.flush()
     expect(events).toEqual([{ status: 'downloading', percent: 50, speed: 1024, eta: 2 },
       { status: 'processing' }, { status: 'downloading', percent: undefined, speed: undefined, eta: undefined }])
+  })
+})
+
+describe('compatibilidade com players do Windows', () => {
+  it('exclui AV1 e VP9 mesmo quando o contêiner é MP4', () => {
+    expect(compatibleQualities(JSON.parse(metadata).formats)).toEqual([1080, 720])
+  })
+  it('não oferece vídeo separado sem uma faixa AAC disponível', () => {
+    expect(compatibleQualities([
+      { height: 1080, ext: 'mp4', vcodec: 'avc1.640028', acodec: 'none' },
+      { ext: 'webm', vcodec: 'none', acodec: 'opus' }
+    ])).toEqual([])
+  })
+  it('aceita MP4 com áudio AAC embutido e rejeita áudio Opus', () => {
+    expect(compatibleQualities([
+      { height: 720, ext: 'mp4', vcodec: 'avc1.4d401f', acodec: 'mp4a.40.2' },
+      { height: 1080, ext: 'mp4', vcodec: 'avc1.640028', acodec: 'opus' }
+    ])).toEqual([720])
+  })
+  it('restringe os codecs nas duas alternativas da seleção automática', () => {
+    const args = downloadArguments(tools, url, 'best', 'temp')
+    expect(args[args.indexOf('--format') + 1]).toBe('bv[ext=mp4][vcodec^=avc1]+ba[ext=m4a][acodec^=mp4a]/b[ext=mp4][vcodec^=avc1][acodec^=mp4a]')
   })
 })
 

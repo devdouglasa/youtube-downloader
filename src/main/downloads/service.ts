@@ -4,6 +4,7 @@ import { access, copyFile, mkdir, mkdtemp, realpath, rm } from 'node:fs/promises
 import { basename, dirname, extname, join } from 'node:path'
 import type { DownloadEvent, DownloadRequest, VideoInfo } from '../../shared/contracts'
 import { userMessage } from './errors'
+import { compatibleQualities, type VideoFormat } from './formats'
 import { parseProgress } from './progress'
 import { CancelledError, runTool, type RunTool } from './runner'
 import { baseArguments, downloadArguments, type Tools } from './tools'
@@ -44,14 +45,12 @@ export class DownloadService {
       })
       if (controller.signal.aborted) throw new CancelledError()
       const data = JSON.parse(raw) as { title?: string; duration?: number; is_live?: boolean; live_status?: string;
-        formats?: { height?: number; vcodec?: string }[] }
+        formats?: VideoFormat[] }
       if (data.is_live || data.live_status === 'is_upcoming' || data.live_status === 'post_live') {
         throw new Error('Esta versão aceita vídeos gravados. Aguarde a transmissão ser finalizada e processada.')
       }
-      const qualities = [...new Set((data.formats ?? [])
-        .filter((f) => f.vcodec && f.vcodec !== 'none' && Number.isInteger(f.height) && (f.height ?? 0) > 0)
-        .map((f) => f.height!))].sort((a, b) => b - a)
-      if (!qualities.length) throw new Error('Não foram encontrados formatos de vídeo disponíveis.')
+      const qualities = compatibleQualities(data.formats ?? [])
+      if (!qualities.length) throw new Error('Este vídeo não oferece formatos MP4 com vídeo H.264 e áudio AAC. Tente outro vídeo ou atualize o yt-dlp.')
       const info: VideoInfo = { url, title: data.title ?? 'Vídeo sem título',
         duration: typeof data.duration === 'number' ? data.duration : null, qualities }
       this.inspected = info
