@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 export function createWindow(): BrowserWindow {
   const directory = fileURLToPath(new URL('.', import.meta.url))
   const window = new BrowserWindow({
-    width: 1080, height: 820, minWidth: 760, minHeight: 680,
+    width: 1180, height: 820, minWidth: 800, minHeight: 680,
     backgroundColor: '#101217', title: 'YouTube Downloader', autoHideMenuBar: true,
     webPreferences: { preload: join(directory, '../preload/index.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true }
   })
