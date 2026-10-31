@@ -19,7 +19,17 @@ async function smoke() {
   }
   const state = await window.webContents.executeJavaScript(`(async () => {
     await new Promise(resolve => setTimeout(resolve, 300));
+    document.querySelector('input[name="download-mode"][value="audio"]').click();
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const audioMode = {
+      selected: document.querySelector('input[value="audio"]').checked,
+      footer: document.querySelector('.download-footer').textContent
+    };
+    document.querySelector('input[name="download-mode"][value="video"]').click();
+    await new Promise(resolve => setTimeout(resolve, 100));
     return {
+      audioMode,
+      videoSelected: document.querySelector('input[value="video"]').checked,
       heading: document.querySelector('h1')?.textContent,
       background: getComputedStyle(document.body).backgroundColor,
       node: typeof window.require,
@@ -29,6 +39,10 @@ async function smoke() {
   })()`)
   assert.deepEqual(errors, [], 'A interface deve carregar sem erros de CSP ou preload')
   assert.match(state.heading, /Seu vídeo/)
+  assert.equal(state.audioMode.selected, true)
+  assert.match(state.audioMode.footer, /Baixar áudio/)
+  assert.match(state.audioMode.footer, /MP3/)
+  assert.equal(state.videoSelected, true)
   assert.equal(state.background, 'rgb(16, 18, 23)')
   assert.equal(state.node, 'undefined')
   assert.deepEqual(state.api, ['cancelDownload', 'chooseDirectory', 'inspectVideo', 'onDownloadEvent', 'startDownload'])

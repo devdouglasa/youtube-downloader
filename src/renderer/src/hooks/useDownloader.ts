@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { DownloadEvent, Result, VideoInfo } from '../../../shared/contracts'
+import type { DownloadEvent, DownloadMode, Result, VideoInfo } from '../../../shared/contracts'
 
 function unwrap<T>(result: Result<T>): T {
   if (!result.ok) throw new Error(result.error)
@@ -10,6 +10,7 @@ export function useDownloader() {
   const [url, setUrl] = useState('')
   const [video, setVideo] = useState<VideoInfo | null>(null)
   const [quality, setQuality] = useState<number | 'best'>('best')
+  const [mode, setMode] = useState<DownloadMode>('video')
   const [directory, setDirectory] = useState('')
   const [event, setEvent] = useState<DownloadEvent | null>(null)
   const [error, setError] = useState('')
@@ -22,6 +23,7 @@ export function useDownloader() {
   const pendingEvents = useRef<DownloadEvent[]>([])
   const active = event?.status === 'downloading' || event?.status === 'processing'
   const busy = inspecting || starting || active || cancelling || choosing
+  const canDownload = Boolean(video && (mode === 'video' ? video.qualities.length : video.hasAudio))
 
   useEffect(() => window.downloader.onDownloadEvent((update) => {
     if (!taskId.current) { pendingEvents.current.push(update); return }
@@ -49,11 +51,14 @@ export function useDownloader() {
   }
 
   const start = async (): Promise<void> => {
-    if (!video) return
+    if (!video || !canDownload) return
     setError(''); setStarting(true); setEvent(null)
     taskId.current = null; terminalId.current = null; pendingEvents.current = []
     try {
-      const id = unwrap(await window.downloader.startDownload({ url: video.url, quality, directory }))
+      const request = mode === 'audio'
+        ? { url: video.url, directory, mode: 'audio' as const }
+        : { url: video.url, directory, mode: 'video' as const, quality }
+      const id = unwrap(await window.downloader.startDownload(request))
       taskId.current = id
       const queued = pendingEvents.current.filter((update) => update.id === id)
       const latest = queued.at(-1)
@@ -71,7 +76,8 @@ export function useDownloader() {
   }
 
   const changeUrl = (value: string): void => { setUrl(value); setVideo(null); setEvent(null); setError('') }
+  const changeMode = (value: DownloadMode): void => { if (busy) return; setMode(value); setEvent(null); setError('') }
 
-  return { url, changeUrl, video, quality, setQuality, directory, event, error, inspecting, starting, choosing,
+  return { url, changeUrl, video, mode, changeMode, canDownload, quality, setQuality, directory, event, error, inspecting, starting, choosing,
     cancelling, active, busy, inspect, chooseDirectory, start, cancel }
 }

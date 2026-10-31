@@ -50,9 +50,10 @@ export class DownloadService {
         throw new Error('Esta versão aceita vídeos gravados. Aguarde a transmissão ser finalizada e processada.')
       }
       const qualities = compatibleQualities(data.formats ?? [])
-      if (!qualities.length) throw new Error('Este vídeo não oferece formatos MP4 com vídeo H.264 e áudio AAC. Tente outro vídeo ou atualize o yt-dlp.')
+      const hasAudio = (data.formats ?? []).some((format) => Boolean(format.acodec && format.acodec !== 'none'))
+      if (!qualities.length && !hasAudio) throw new Error('Este vídeo não oferece áudio nem formatos MP4 compatíveis. Tente outro vídeo ou atualize o yt-dlp.')
       const info: VideoInfo = { url, title: data.title ?? 'Vídeo sem título',
-        duration: typeof data.duration === 'number' ? data.duration : null, qualities }
+        duration: typeof data.duration === 'number' ? data.duration : null, qualities, hasAudio }
       this.inspected = info
       return info
     })()
@@ -64,8 +65,12 @@ export class DownloadService {
   startDownload(request: DownloadRequest): string {
     this.assertIdle()
     const url = normalizeVideoUrl(request.url)
+    if (request.mode !== 'video' && request.mode !== 'audio') throw new Error('Selecione vídeo MP4 ou áudio MP3.')
     if (!this.inspected || this.inspected.url !== url) throw new Error('Consulte o vídeo antes de baixar.')
-    if (request.quality !== 'best' && !this.inspected.qualities.includes(request.quality)) throw new Error('Selecione uma qualidade disponível.')
+    if (request.mode === 'video') {
+      if (!this.inspected.qualities.length) throw new Error('Não há vídeo H.264/AAC disponível. Você pode escolher apenas áudio MP3, se disponível.')
+      if (request.quality !== 'best' && !this.inspected.qualities.includes(request.quality)) throw new Error('Selecione uma qualidade disponível.')
+    } else if (!this.inspected.hasAudio) throw new Error('Este vídeo não possui uma faixa de áudio disponível.')
     const tools = this.getTools()
     const id = randomUUID()
     const task: ActiveTask = { controller: new AbortController(), done: Promise.resolve(), committing: false }
@@ -85,7 +90,7 @@ export class DownloadService {
       if (task.controller.signal.aborted) throw new CancelledError()
       let output: string | undefined
       this.emit({ id, status: 'downloading' })
-      await this.run(tools.ytdlp, downloadArguments(tools, request.url, request.quality, temp), task.controller.signal, (line) => {
+      await this.run(tools.ytdlp, downloadArguments(tools, request.url, request.mode === 'video' ? request.quality : 'best', temp, request.mode), task.controller.signal, (line) => {
         if (line.startsWith('APP_FILE:')) {
           const value: unknown = JSON.parse(line.slice('APP_FILE:'.length))
           if (typeof value === 'string') output = value
@@ -97,7 +102,8 @@ export class DownloadService {
       if (!output) throw new Error('A ferramenta terminou sem informar o arquivo final.')
       const source = await realpath(output)
       if (dirname(source) !== await realpath(temp)) throw new Error('A ferramenta retornou um arquivo fora da pasta temporária.')
-      if (extname(source).toLowerCase() !== '.mp4') throw new Error('Não foi possível finalizar o vídeo em MP4. Atualize o yt-dlp e o FFmpeg e tente novamente.')
+      const extension = request.mode === 'audio' ? 'mp3' : 'mp4'
+      if (extname(source).toLowerCase() !== `.${extension}`) throw new Error(`Não foi possível finalizar o arquivo em ${extension.toUpperCase()}. Atualize o yt-dlp e o FFmpeg e tente novamente.`)
       if (task.controller.signal.aborted) throw new CancelledError()
       // From this point the exclusive final copy is atomic from the task's perspective.
       task.committing = true

@@ -3,7 +3,10 @@ export interface VideoInfo {
   title: string
   duration: number | null
   qualities: number[]
+  hasAudio: boolean
 }
+
+export type DownloadMode = 'video' | 'audio'
 
 export type DownloadStatus = 'downloading' | 'processing' | 'completed' | 'cancelled' | 'error'
 
@@ -17,11 +20,10 @@ export interface DownloadEvent {
   message?: string
 }
 
-export interface DownloadRequest {
+export type DownloadRequest = {
   url: string
-  quality: number | 'best'
   directory: string
-}
+} & ({ mode: 'video'; quality: number | 'best' } | { mode: 'audio' })
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string }
 

@@ -1,5 +1,6 @@
 import { accessSync, constants } from 'node:fs'
 import { delimiter, join } from 'node:path'
+import type { DownloadMode } from '../../shared/contracts'
 
 export interface Tools { ytdlp: string; ffmpeg: string; ffprobe: string; deno: string }
 
@@ -22,17 +23,20 @@ export function baseArguments(tools: Tools): string[] {
     '--socket-timeout', '30', '--retries', '3']
 }
 
-export function downloadArguments(tools: Tools, url: string, quality: number | 'best', directory: string): string[] {
+export function downloadArguments(tools: Tools, url: string, quality: number | 'best', directory: string, mode: DownloadMode = 'video'): string[] {
   if (quality !== 'best' && (!Number.isInteger(quality) || quality <= 0)) throw new Error('Qualidade inválida.')
   const limit = quality === 'best' ? '' : `[height<=${quality}]`
+  const mediaArguments = mode === 'audio'
+    ? ['--format', 'ba/b[acodec!=none]', '--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0']
+    : ['--format', `bv[ext=mp4][vcodec^=avc1]${limit}+ba[ext=m4a][acodec^=mp4a]/b[ext=mp4][vcodec^=avc1][acodec^=mp4a]${limit}`,
+      '--merge-output-format', 'mp4', '--remux-video', 'mp4']
   return [...baseArguments(tools), '--newline', '--no-simulate',
     '--progress', '--progress-delta', '0.25', '--progress-template', 'download:APP_PROGRESS:%(progress)j',
     '--progress-template', 'postprocess:APP_PHASE:processing',
     '--print', 'before_dl:APP_PHASE:downloading',
     '--print', 'post_process:APP_PHASE:processing',
     '--print', 'after_move:APP_FILE:%(filepath)j',
-    '--format', `bv[ext=mp4][vcodec^=avc1]${limit}+ba[ext=m4a][acodec^=mp4a]/b[ext=mp4][vcodec^=avc1][acodec^=mp4a]${limit}`,
-    '--merge-output-format', 'mp4', '--remux-video', 'mp4',
+    ...mediaArguments,
     '--windows-filenames', '--trim-filenames', '160',
     '--paths', directory, '--output', '%(title)s [%(id)s].%(ext)s', '--', url]
 }

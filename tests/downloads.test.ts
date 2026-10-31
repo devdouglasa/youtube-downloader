@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { DownloadEvent } from '../src/shared/contracts'
+import type { DownloadEvent, DownloadRequest } from '../src/shared/contracts'
 import { LineReader, parseProgress } from '../src/main/downloads/progress'
 import { CancelledError, runTool, type RunTool } from '../src/main/downloads/runner'
 import { DownloadService } from '../src/main/downloads/service'
@@ -35,6 +35,17 @@ describe('URLs', () => {
 })
 
 describe('argumentos e protocolo de progresso', () => {
+  it('baixa a faixa de áudio e converte para MP3 em alta qualidade', () => {
+    const args = downloadArguments(tools, url, 'best', 'C:\\Áudios com espaços', 'audio')
+    expect(args[args.indexOf('--format') + 1]).toBe('ba/b[acodec!=none]')
+    expect(args).toContain('--extract-audio')
+    expect(args[args.indexOf('--audio-format') + 1]).toBe('mp3')
+    expect(args[args.indexOf('--audio-quality') + 1]).toBe('0')
+    expect(args).not.toContain('--merge-output-format')
+    expect(args).not.toContain('--remux-video')
+    expect(args).toContain('after_move:APP_FILE:%(filepath)j')
+    expect(args.slice(-2)).toEqual(['--', url])
+  })
   it('mantém caminhos como argumentos separados e limita a resolução sem transcodificar', () => {
     const args = downloadArguments(tools, url, 720, 'C:\\Vídeos com acentos\\temporário')
     expect(args).toContain('bv[ext=mp4][vcodec^=avc1][height<=720]+ba[ext=m4a][acodec^=mp4a]/b[ext=mp4][vcodec^=avc1][acodec^=mp4a][height<=720]')
@@ -103,7 +114,7 @@ describe('serviço de download', () => {
     throw new Error('Timeout aguardando estado do teste.')
   }
   const service = (run: RunTool): DownloadService => new DownloadService(() => tools, join(root, 'temp'), (event) => events.push(event), run)
-  const request = () => ({ url, quality: 'best' as const, directory: destination })
+  const request = () => ({ url, mode: 'video' as const, quality: 'best' as const, directory: destination })
 
   it('inspeciona formatos, bloqueia concorrência e preserva arquivo existente', async () => {
     const s = service(inspectOr(async (_file, args, _signal, line) => {
@@ -128,7 +139,10 @@ describe('serviço de download', () => {
     expect(await readdir(join(root, 'temp'))).toEqual([])
   })
 
-  it.each(['downloading', 'processing'] as const)('cancela durante %s e limpa temporários', async (phase) => {
+  it.each([
+    { phase: 'downloading', mode: 'video' }, { phase: 'processing', mode: 'video' },
+    { phase: 'downloading', mode: 'audio' }, { phase: 'processing', mode: 'audio' }
+  ] as const)('cancela $mode durante $phase e limpa temporários', async ({ phase, mode }) => {
     let running = false
     const s = service(inspectOr(async (_file, _args, signal, line) => {
       running = true
@@ -139,7 +153,7 @@ describe('serviço de download', () => {
       })
     }))
     await s.inspectVideo(url)
-    s.startDownload(request())
+    s.startDownload(mode === 'audio' ? { url, directory: destination, mode } : request())
     await waitUntil(() => running)
     await s.cancel()
     expect(events.at(-1)?.status).toBe('cancelled')
@@ -191,6 +205,58 @@ describe('serviço de download', () => {
     s.startDownload(request())
     await waitUntil(() => events.some((event) => event.status === 'error'))
     expect(events.at(-1)?.message).toContain('MP4')
+    expect(await readdir(destination)).toEqual([])
+    expect(await readdir(join(root, 'temp'))).toEqual([])
+  })
+
+  it('baixa MP3 sem exigir vídeo H.264 e preserva arquivo existente', async () => {
+    const audioOnly = JSON.stringify({ title: 'Som', formats: [{ ext: 'webm', acodec: 'opus', vcodec: 'none' }] })
+    const s = service(async (_file, args, _signal, line) => {
+      if (args.includes('--dump-single-json')) { line(audioOnly); return }
+      expect(args).toContain('--extract-audio')
+      const output = join(args[args.indexOf('--paths') + 1], 'Som.mp3')
+      await writeFile(output, 'áudio novo')
+      line('APP_PHASE:processing')
+      line(`APP_FILE:${JSON.stringify(output)}`)
+    })
+    const info = await s.inspectVideo(url)
+    expect(info.hasAudio).toBe(true)
+    expect(info.qualities).toEqual([])
+    expect(() => s.startDownload(request())).toThrow('H.264')
+    await writeFile(join(destination, 'Som.mp3'), 'original')
+    s.startDownload({ url, directory: destination, mode: 'audio' })
+    await waitUntil(() => events.some((event) => event.status === 'completed'))
+    expect(events.at(-1)?.path).toBe(join(destination, 'Som (1).mp3'))
+    expect(await readFile(join(destination, 'Som.mp3'), 'utf8')).toBe('original')
+    expect(await readFile(join(destination, 'Som (1).mp3'), 'utf8')).toBe('áudio novo')
+    expect(await readdir(join(root, 'temp'))).toEqual([])
+  })
+
+  it('rejeita áudio ausente e modo inválido antes de iniciar um processo', async () => {
+    const silent = JSON.stringify({ formats: [{ ext: 'mp4', height: 720, vcodec: 'avc1.4d401f', acodec: 'mp4a.40.2' }] })
+    const s = service(async (_file, args, _signal, line) => {
+      expect(args).toContain('--dump-single-json')
+      line(silent)
+    })
+    await s.inspectVideo(url)
+    expect(() => s.startDownload({ ...request(), mode: 'invalid' } as unknown as DownloadRequest)).toThrow('Selecione vídeo')
+    // A metadata response with only a silent video cannot be downloaded as audio.
+    const noAudio = service(async (_file, _args, _signal, line) => {
+      line(JSON.stringify({ formats: [{ ext: 'mp4', height: 720, vcodec: 'avc1', acodec: 'none' }] }))
+    })
+    await expect(noAudio.inspectVideo(url)).rejects.toThrow('não oferece áudio')
+  })
+
+  it('rejeita resultado em outro formato no modo MP3 e limpa temporários', async () => {
+    const s = service(inspectOr(async (_file, args, _signal, line) => {
+      const output = join(args[args.indexOf('--paths') + 1], 'audio.m4a')
+      await writeFile(output, 'áudio sem conversão')
+      line(`APP_FILE:${JSON.stringify(output)}`)
+    }))
+    await s.inspectVideo(url)
+    s.startDownload({ url, directory: destination, mode: 'audio' })
+    await waitUntil(() => events.some((event) => event.status === 'error'))
+    expect(events.at(-1)?.message).toContain('MP3')
     expect(await readdir(destination)).toEqual([])
     expect(await readdir(join(root, 'temp'))).toEqual([])
   })

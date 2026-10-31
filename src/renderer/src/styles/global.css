@@ -32,6 +32,12 @@ input[readonly] { color: #a4a8b5; }
 .secondary-button { border: 1px solid #414552; background: #252933; color: #eff0f5; padding: 13px 17px; border-radius: 8px; white-space: nowrap; }
 .secondary-button:hover:not(:disabled) { background: #323746; }
 .destination { margin-top: 26px; padding-top: 24px; border-top: 1px solid #30333e; }
+.mode-selector { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 22px 0 0; border: 1px solid #373b47; border-radius: 8px; padding: 12px 14px; }
+.mode-selector legend { color: #b9bdca; font-size: 12px; padding: 0 6px; }
+.mode-selector label { display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; color: #eff0f5; }
+.mode-selector input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: #b5a2ff; }
+.mode-selector:disabled label { opacity: .45; cursor: not-allowed; }
+.availability-note { color: #a4a8b5; font-size: 12px; line-height: 1.5; margin-bottom: 0; }
 .download-footer { margin-top: 24px; gap: 15px; }
 .download-footer p { margin: 0; font-size: 12px; line-height: 1.7; color: #d0d2dc; }
 .download-footer p span { color: #8b91a1; }
