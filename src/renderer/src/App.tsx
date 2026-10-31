@@ -5,7 +5,7 @@ import { useDownloader } from './hooks/useDownloader'
 export function App() {
   const d = useDownloader()
   return <main className="app-shell">
-    <header className="topbar"><div className="brand"><span className="brand-icon" aria-hidden="true">↓</span><span>downloader<span className="brand-dot">.</span></span></div><span className="local-badge"><i /> APLICATIVO LOCAL</span></header>
+    <header className="topbar"><div className="brand"><span className="brand-icon" aria-hidden="true">↓</span><span><span className="brand-dot">Dev</span>Douglas</span></div><span className="local-badge"><i /> APLICATIVO LOCAL</span></header>
     <div className="intro"><span className="eyebrow">DO LINK PARA O SEU COMPUTADOR</span><h1>Seu vídeo.<br /><span>Do seu jeito.</span></h1><p>Cole um link do YouTube e salve o vídeo ou apenas o áudio na sua pasta.</p></div>
     <section className="download-card" aria-label="Novo download">
       <div className="section-heading"><span className="step">01</span><h2>Qual vídeo vamos baixar?</h2></div>
