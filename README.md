@@ -4,6 +4,10 @@ Aplicativo desktop em português com Electron, React e TypeScript. Consulta um v
 
 Escolha **Vídeo MP4** para salvar áudio e imagem juntos, ou **Apenas áudio MP3** para extrair somente o som. No modo MP3, a resolução não se aplica: o app baixa a melhor faixa de áudio disponível e a converte com FFmpeg em MP3 de alta qualidade (VBR, qualidade 0). A conversão é com perdas e não melhora a qualidade da fonte. Áudio também pode ser extraído quando não existe uma versão de vídeo H.264 compatível.
 
+## Imagem
+
+![screenshot](./img/app.png)
+
 ## Executar no Windows
 
 1. Instale Node.js 22.18+ (ou uma versão LTS posterior compatível).
