@@ -1,0 +1,9 @@
+{
+  "checkedAt": "Preenchido automaticamente por npm run tools:check",
+  "tools": {
+    "yt-dlp": { "path": "resources/bin/yt-dlp.exe", "version": "versão instalada" },
+    "ffmpeg": { "path": "resources/bin/ffmpeg.exe", "version": "versão instalada" },
+    "ffprobe": { "path": "resources/bin/ffprobe.exe", "version": "versão instalada" },
+    "deno": { "path": "resources/bin/deno.exe", "version": "versão instalada" }
+  }
+}
