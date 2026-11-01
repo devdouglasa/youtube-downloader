@@ -1,6 +1,6 @@
 # Ferramentas de download
 
-Coloque estes executáveis diretamente nesta pasta (sem subpastas):
+No Windows, coloque estes executáveis diretamente nesta pasta (sem subpastas):
 
 ```text
 yt-dlp.exe
@@ -8,6 +8,24 @@ ffmpeg.exe
 ffprobe.exe
 deno.exe
 ```
+
+## Linux
+
+Use os executáveis nativos, sem a extensão `.exe`: `yt-dlp`, `ffmpeg`, `ffprobe` e `deno`. Eles podem estar nesta pasta ou no PATH; os arquivos desta pasta têm prioridade.
+
+Para Linux x86_64 com glibc (incluindo CachyOS), baixe `yt-dlp_linux` das [releases oficiais do yt-dlp](https://github.com/yt-dlp/yt-dlp/releases) e salve-o nesta pasta com o nome `yt-dlp`. Para Deno, extraia o arquivo `deno` de `deno-x86_64-unknown-linux-gnu.zip` das [releases oficiais do Deno](https://github.com/denoland/deno/releases). Verifique os downloads com `SHA2-256SUMS` (yt-dlp) e o arquivo `.sha256sum` do ZIP (Deno), publicados nas mesmas releases. Para outras arquiteturas ou musl, escolha os artefatos correspondentes.
+
+Na raiz do projeto, marque os dois arquivos como executáveis:
+
+```sh
+chmod +x resources/bin/yt-dlp resources/bin/deno
+```
+
+Instale FFmpeg pelo gerenciador de pacotes da distribuição, incluindo `ffmpeg` e `ffprobe`. Se já estiverem no PATH, não é necessário copiá-los para esta pasta. No CachyOS/Arch, o pacote é `ffmpeg`. O binário standalone `yt-dlp_linux` já inclui Python e EJS.
+
+Execute `npm run tools:check` para confirmar que as quatro ferramentas funcionam antes de iniciar `npm run dev`. Instalar as dependências npm não instala essas ferramentas externas.
+
+## Windows
 
 Use fontes oficiais:
 

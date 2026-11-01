@@ -16,6 +16,12 @@ Escolha **Vídeo MP4** para salvar áudio e imagem juntos, ou **Apenas áudio MP
 4. Execute `npm run tools:check`.
 5. Execute `npm run dev`.
 
+### Preparação do Electron (Windows e Linux)
+
+O comando `npm run dev` executa automaticamente `predev` (`install-electron`) antes de iniciar o Vite. Essa etapa baixa o binário da versão instalada do Electron quando necessário e exige acesso à internet no primeiro uso. Se o binário já estiver instalado, a etapa termina sem repetir o download.
+
+Para preparar somente o Electron, execute `npm run predev`. No Linux, execute o aplicativo em uma sessão gráfica e prepare as ferramentas seguindo [resources/bin/README.md](resources/bin/README.md).
+
 Cole uma URL HTTPS do YouTube, clique em **Consultar vídeo**, escolha a qualidade e a pasta e clique em **Baixar vídeo**. O arquivo final é **MP4 com vídeo H.264 e áudio AAC**, compatíveis com os codecs nativos dos players do Windows. Apenas mudar o contêiner para MP4 não garante reprodução: AV1, VP9 ou outros codecs podem exigir extensões. O aplicativo seleciona diretamente as faixas H.264/AAC e usa FFmpeg para combiná-las, sem recodificação. A lista mostra somente resoluções compatíveis; “Melhor disponível” usa a melhor delas, que pode ser menor que a máxima oferecida pelo YouTube. Quando não existem formatos compatíveis, o aplicativo informa o erro, sem baixar codecs alternativos. Arquivos baixados antes dessa correção precisam ser baixados novamente. O progresso é do arquivo atual: pode reiniciar quando o download passa do vídeo para o áudio. O processamento e a cópia final têm progresso indeterminado.
 
 O nome inclui título e ID do vídeo. Arquivos existentes são preservados, com sufixos `(1)`, `(2)` etc. A gravação final não pode ser interrompida depois que começou; ao cancelar nessa etapa o app aguarda a conclusão. Fechar a janela cancela os processos ativos e aguarda a limpeza antes de encerrar.
@@ -53,6 +59,7 @@ Cada download usa uma pasta exclusiva em `%TEMP%/youtube-downloader`. O arquivo 
 
 ## Diagnóstico e limitações
 
+- **`Error: Electron uninstall`:** o `electron-vite` não encontrou o binário do Electron. Execute `npm run predev` e depois `npm run dev`. Se o pacote npm estiver ausente, execute `npm ci` antes. O instalador cria `node_modules/electron/path.txt` e o executável em `node_modules/electron/dist`; falhas de download aparecem no terminal. Use `npm run dev` para executar a preparação automática, em vez de chamar `electron-vite dev` diretamente.
 - **Ferramenta ausente:** execute `npm run tools:check`; confirme os quatro executáveis diretamente em `resources/bin` ou no PATH.
 - **YouTube mudou ou erro de desafio:** atualize yt-dlp e Deno. Use o executável oficial do yt-dlp com EJS incluído. Detalhes técnicos aparecem no terminal que iniciou o app.
 - **Falha de rede:** confirme a conexão e tente consultar novamente. Erros do YouTube ou bloqueios de IP podem impedir downloads mesmo com a aplicação funcionando.

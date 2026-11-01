@@ -4,6 +4,7 @@
   "description": "Aplicativo local para download de vídeos do YouTube",
   "main": "out/main/index.js",
   "scripts": {
+    "predev": "install-electron",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",
